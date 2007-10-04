@@ -51,6 +51,6 @@ def main(name, email, subdir, branch='master'):
 
 if __name__ == "__main__":
     if len(sys.argv) not in (4, 5):
-        print >>sys.stderr, "%s: usage: %s <name> <email> <subdir> <branch> < <wordpress-export.xml> | git-fast-import " % (sys.argv[0], sys.argv[0])
+        print >>sys.stderr, "%s: usage: %s name email subdir [branch] < wordpress-export.xml | git-fast-import " % (sys.argv[0], sys.argv[0])
     else:
         main(*sys.argv[1:])
