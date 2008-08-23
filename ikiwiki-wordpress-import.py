@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-    Ikiwiki to Wordpress import tool
+    Wordpress-to-Ikiwiki import tool
     Copyright (C) 2007  Chris Lamb <chris@chris-lamb.co.uk>
 
     This program is free software: you can redistribute it and/or modify
