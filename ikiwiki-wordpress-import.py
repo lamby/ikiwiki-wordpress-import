@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
 """
+    Purpose:
     Wordpress-to-Ikiwiki import tool
-    Copyright (C) 2007  Chris Lamb <chris@chris-lamb.co.uk>
+
+    Copyright:
+    Copyright (C) 2007  Chris Lamb 
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,13 +18,22 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see .
+
+    Usage: run --help as an argument with this script.
+
+    Notes:
+    I added some extra bits to include the [[!tag  foo]] stuff in the post,
+    as it wasn't before, at all. I'll diff the versions out so you can see
+    the mess I made :).
+
 """
 
 import os, sys
 import time
 import re
 
+from datetime import datetime
 from BeautifulSoup import BeautifulSoup
 
 import codecs, htmlentitydefs
@@ -48,22 +60,39 @@ def main(name, email, subdir, branch='master'):
 
         commit_msg = """Importing WordPress post "%s" [%s]""" % (x.title.string, x.guid.string)
         timestamp = time.mktime(time.strptime(x.find('wp:post_date_gmt').string, "%Y-%m-%d %H:%M:%S"))
-
-        content = '[[meta title="%s"]]\n\n' % (x.title.string.replace('"', r'\"'))
+        content = '[[!meta  title="%s"]]\n' % (x.title.string.replace('"', r'\"'))
+        content += "[[!meta  date=\"%s\"]]\n" % datetime.fromtimestamp(timestamp)
         content += x.find('content:encoded').string.replace('\r\n', '\n')
-        data = content.encode('ascii', 'html_replace')
 
-        categories = x.findAll('category')
+        """
+        We do it differently here because we have duplicates otherwise.
+        Take a look:
+        <category><![CDATA[Health]]></category>
+        <category domain="category" nicename="health"><![CDATA[Health]]></category>
+
+        If we do the what original did, we end up with all tags and cats doubled.
+        Therefore we only pick out nicename="foo". Our 'True' below is our 'foo'.
+        I'd much rather have the value of 'nicename', and tried, but my
+        python skillz are extremely limited....
+        """
+        categories = x.findAll('category', nicename=True)
         if categories:
             content += "\n"
             for cat in categories:
-                content += "\n[[tag tags/%s]]" % (cat.string.replace(' ', '-'))
+                # remove 'tags/' because we have a 'tagbase' set.
+                # your choice: 'tag', or 'taglink'
+                # content += "\n[[!tag  %s]]" % (cat.string.replace(' ', '-'))
+                content += "\n[[!taglink  %s]]" % (cat.string.replace(' ', '-'))
+                # this is just debugging, and for fun
+                # print >>sys.stderr, cat.string.replace(' ', '-')
 
+        # moved this thing down
+        data = content.encode('ascii', 'html_replace')
         print "commit refs/heads/%s" % branch
         print "committer %s <%s> %d +0000" % (name, email, timestamp)
         print "data %d" % len(commit_msg)
         print commit_msg
-        print "M 644 inline %s" % os.path.join(subdir, '%s.mdwn' % stub)
+        print "M 644 inline %s" % os.path.join(subdir, "%s.mdwn" % stub)
         print "data %d" % len(data)
         print data
 
