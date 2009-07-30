@@ -81,7 +81,7 @@ def main(name, email, subdir, branch='master'):
             for cat in categories:
                 # remove 'tags/' because we have a 'tagbase' set.
                 # your choice: 'tag', or 'taglink'
-                content += "\n[[!tag  %s]]" % (cat.string.replace(' ', '-').lower())
+                content += "\n[[!tag  %s]]" % (cat.string.replace(' ', '-').replace('/', '-').lower())
                 #content += "\n[[!taglink  %s]]" % (cat.string.replace(' ', '-'))
                 # this is just debugging, and for fun
                 # print >>sys.stderr, cat.string.replace(' ', '-')
