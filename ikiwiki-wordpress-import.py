@@ -96,6 +96,40 @@ def main(name, email, subdir, branch='master'):
         print "data %d" % len(data)
         print data
 
+        i = 1
+        for comment in x.findAll('wp:comment'):
+            if comment.findAll('wp:comment_approved')[0].string != '1':
+                continue
+
+            author = comment.findAll('wp:comment_author')[0].string
+            url = comment.findAll('wp:comment_author_url')[0].string
+            date_str = comment.findAll('wp:comment_date_gmt')[0].string
+            date = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%dT%H:%M:%SZ')
+            content = comment.findAll('wp:comment_content')[0].string
+
+            data = '''[[!comment format=mdwn
+claimedauthor="%s"''' % author
+
+            if url is not None:
+                data += '''
+url="%s"''' % url
+
+            data += '''
+subject="%s"
+date="%s"
+content="""
+%s
+"""]]''' % ('Re: ' + x.title.string.replace('"', r'\"'), date, content)
+            print "M 644 inline %s" % os.path.join(subdir, stub, 'comment_%s._comment' % i)
+            print "data %d" % len(data)
+            try:
+                print data.encode('ascii', 'replace')
+            except:
+                print >> sys.stderr, type(data)
+                print >> sys.stderr, data
+
+            i += 1
+
 if __name__ == "__main__":
     if len(sys.argv) not in (4, 5):
         print >>sys.stderr, "%s: usage: %s name email subdir [branch] < wordpress-export.xml | git-fast-import " % (sys.argv[0], sys.argv[0])
