@@ -87,11 +87,12 @@ def main(name, email, subdir, branch='master'):
                 # print >>sys.stderr, cat.string.replace(' ', '-')
 
         # moved this thing down
-        data = content.encode('ascii', 'html_replace')
+        data = content.encode('utf_8', 'html_replace')
+        commit = commit_msg.encode("utf_8")
         print "commit refs/heads/%s" % branch
         print "committer %s <%s> %d +0000" % (name, email, timestamp)
-        print "data %d" % len(commit_msg)
-        print commit_msg
+        print "data %d" % len(commit)
+        print commit
         print "M 644 inline %s" % os.path.join(subdir, "%s.mdwn" % stub)
         print "data %d" % len(data)
         print data
@@ -120,10 +121,11 @@ date="%s"
 content="""
 %s
 """]]''' % ('Re: ' + x.title.string.replace('"', r'\"'), date, content)
+            data = data.encode("utf_8")
             print "M 644 inline %s" % os.path.join(subdir, stub, 'comment_%s._comment' % i)
             print "data %d" % len(data)
             try:
-                print data.encode('ascii', 'replace')
+                print data
             except:
                 print >> sys.stderr, type(data)
                 print >> sys.stderr, data
