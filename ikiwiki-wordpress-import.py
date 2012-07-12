@@ -109,7 +109,7 @@ def main(name, email, subdir, branch='master'):
             content = comment.findAll('wp:comment_content')[0].string.replace('<![CDATA[', '').replace('<!]]>', '')
 
             data = '''[[!comment format=mdwn
-claimedauthor="%s"''' % author
+username="%s"''' % author
 
             if url is not None:
                 data += '''
