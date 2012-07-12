@@ -102,11 +102,11 @@ def main(name, email, subdir, branch='master'):
             if comment.findAll('wp:comment_approved')[0].string != '1':
                 continue
 
-            author = comment.findAll('wp:comment_author')[0].string
+            author = comment.findAll('wp:comment_author')[0].string.replace('<![CDATA[', '').replace('<!]]>', '')
             url = comment.findAll('wp:comment_author_url')[0].string
             date_str = comment.findAll('wp:comment_date_gmt')[0].string
             date = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%dT%H:%M:%SZ')
-            content = comment.findAll('wp:comment_content')[0].string
+            content = comment.findAll('wp:comment_content')[0].string.replace('<![CDATA[', '').replace('<!]]>', '')
 
             data = '''[[!comment format=mdwn
 claimedauthor="%s"''' % author
