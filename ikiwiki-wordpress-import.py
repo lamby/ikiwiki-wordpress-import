@@ -69,7 +69,7 @@ def main(name, email, subdir, branch='master'):
         timestamp = time.mktime(time.strptime(x.find('wp:post_date_gmt').string, "%Y-%m-%d %H:%M:%S"))
         content = '[[!meta  title="%s"]]\n' % (x.title.string.replace('"', r"'"))
         content += "[[!meta  date=\"%s\"]]\n" % datetime.fromtimestamp(timestamp)
-        content += x.find('content:encoded').string.replace('\r\n', '\n')
+        content += x.find('content:encoded').string.replace('\r\n', '\n').replace('\r', '\n')
 
         # We do it differently here because we have duplicates otherwise.
         # Take a look:
