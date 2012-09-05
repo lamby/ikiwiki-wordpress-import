@@ -30,14 +30,16 @@
 
 """
 
-import os, sys
-import time
+import codecs
+import htmlentitydefs
+import os
 import re
+import sys
+import time
 
 from datetime import datetime
 from BeautifulSoup import BeautifulSoup
 
-import codecs, htmlentitydefs
 
 codecs.register_error('html_replace', lambda x: (''.join([u'&%s;' \
     % htmlentitydefs.codepoint2name[ord(c)] for c in x.object[x.start:x.end]]), x.end))
