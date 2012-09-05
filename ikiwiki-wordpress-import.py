@@ -52,7 +52,8 @@ def main(name, email, subdir, branch='master'):
 
     for x in soup.findAll('item'):
         # Ignore draft posts
-        if x.find('wp:status').string != 'publish': continue
+        if x.find('wp:status').string != 'publish':
+            continue
 
         if x.guid.string is not None:
             match = stub_pattern.match(x.guid.string)
