@@ -64,17 +64,15 @@ def main(name, email, subdir, branch='master'):
         content += "[[!meta  date=\"%s\"]]\n" % datetime.fromtimestamp(timestamp)
         content += x.find('content:encoded').string.replace('\r\n', '\n')
 
-        """
-        We do it differently here because we have duplicates otherwise.
-        Take a look:
-        <category><![CDATA[Health]]></category>
-        <category domain="category" nicename="health"><![CDATA[Health]]></category>
-
-        If we do the what original did, we end up with all tags and cats doubled.
-        Therefore we only pick out nicename="foo". Our 'True' below is our 'foo'.
-        I'd much rather have the value of 'nicename', and tried, but my
-        python skillz are extremely limited....
-        """
+        # We do it differently here because we have duplicates otherwise.
+        # Take a look:
+        # <category><![CDATA[Health]]></category>
+        # <category domain="category" nicename="health"><![CDATA[Health]]></category>
+        #
+        # If we do the what original did, we end up with all tags and cats doubled.
+        # Therefore we only pick out nicename="foo". Our 'True' below is our 'foo'.
+        # I'd much rather have the value of 'nicename', and tried, but my
+        # python skillz are extremely limited....
         categories = x.findAll('category', nicename=True)
         if categories:
             content += "\n"
