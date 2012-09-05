@@ -54,12 +54,15 @@ def main(name, email, subdir, branch='master'):
         # Ignore draft posts
         if x.find('wp:status').string != 'publish': continue
 
-        match = stub_pattern.match(x.guid.string)
-        if match:
-            stub = match.groups()[0]
+        if x.guid.string is not None:
+            match = stub_pattern.match(x.guid.string)
+            if match:
+                stub = match.groups()[0]
+            else:
+                # Fall back to our own stubs
+                stub = re.sub(r'[^a-zA-Z0-9_]', '-', x.title.string).lower()
         else:
-            # Fall back to our own stubs
-            stub = re.sub(r'[^a-zA-Z0-9_]', '-', x.title.string).lower()
+            stub = ""
 
         commit_msg = """Importing WordPress post "%s" [%s]""" % (x.title.string, x.guid.string)
         timestamp = time.mktime(time.strptime(x.find('wp:post_date_gmt').string, "%Y-%m-%d %H:%M:%S"))
