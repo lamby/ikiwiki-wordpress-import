@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 """
     Purpose:
@@ -29,14 +30,16 @@
 
 """
 
-import os, sys
-import time
+import codecs
+import htmlentitydefs
+import os
 import re
+import sys
+import time
 
 from datetime import datetime
 from BeautifulSoup import BeautifulSoup
 
-import codecs, htmlentitydefs
 
 codecs.register_error('html_replace', lambda x: (''.join([u'&%s;' \
     % htmlentitydefs.codepoint2name[ord(c)] for c in x.object[x.start:x.end]]), x.end))
@@ -49,32 +52,34 @@ def main(name, email, subdir, branch='master'):
 
     for x in soup.findAll('item'):
         # Ignore draft posts
-        if x.find('wp:status').string != 'publish': continue
+        if x.find('wp:status').string != 'publish':
+            continue
 
-        match = stub_pattern.match(x.guid.string)
-        if match:
-            stub = match.groups()[0]
+        if x.guid.string is not None:
+            match = stub_pattern.match(x.guid.string)
+            if match:
+                stub = match.groups()[0]
+            else:
+                # Fall back to our own stubs
+                stub = re.sub(r'[^a-zA-Z0-9_]', '-', x.title.string).lower()
         else:
-            # Fall back to our own stubs
-            stub = re.sub(r'[^a-zA-Z0-9_]', '-', x.title.string).lower()
+            stub = ""
 
         commit_msg = """Importing WordPress post "%s" [%s]""" % (x.title.string, x.guid.string)
         timestamp = time.mktime(time.strptime(x.find('wp:post_date_gmt').string, "%Y-%m-%d %H:%M:%S"))
         content = '[[!meta  title="%s"]]\n' % (x.title.string.replace('"', r"'"))
         content += "[[!meta  date=\"%s\"]]\n" % datetime.fromtimestamp(timestamp)
-        content += x.find('content:encoded').string.replace('\r\n', '\n')
+        content += x.find('content:encoded').string.replace('\r\n', '\n').replace('\r', '\n')
 
-        """
-        We do it differently here because we have duplicates otherwise.
-        Take a look:
-        <category><![CDATA[Health]]></category>
-        <category domain="category" nicename="health"><![CDATA[Health]]></category>
-
-        If we do the what original did, we end up with all tags and cats doubled.
-        Therefore we only pick out nicename="foo". Our 'True' below is our 'foo'.
-        I'd much rather have the value of 'nicename', and tried, but my
-        python skillz are extremely limited....
-        """
+        # We do it differently here because we have duplicates otherwise.
+        # Take a look:
+        # <category><![CDATA[Health]]></category>
+        # <category domain="category" nicename="health"><![CDATA[Health]]></category>
+        #
+        # If we do the what original did, we end up with all tags and cats doubled.
+        # Therefore we only pick out nicename="foo". Our 'True' below is our 'foo'.
+        # I'd much rather have the value of 'nicename', and tried, but my
+        # python skillz are extremely limited....
         categories = x.findAll('category', nicename=True)
         if categories:
             content += "\n"
