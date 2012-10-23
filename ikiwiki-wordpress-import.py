@@ -94,7 +94,7 @@ class Item(object):
         if self.published:
             self.timestamp = time.mktime(time.strptime(x.find('wp:post_date_gmt').string, "%Y-%m-%d %H:%M:%S"))
         else:
-            self.timestamp = None
+            self.timestamp = timestamp_now()
 
         self.content = x.find('content:encoded').string.replace('\r\n', '\n').replace('\r', '\n')
 
@@ -189,13 +189,17 @@ content="""
 
     def resolve_parent(self, post_id_map):
         parent = self.x.find("wp:post_parent").string or None
+        inherit_status = self.x.find('wp:status').string == "inherit"
         self.parent = post_id_map.get(int(parent), None)
 
         if self.parent:
             self.parent.children.append(self)
 
-            if self.x.find('wp:status').string == "inherit":
+            if inherit_status:
                 self.published = self.parent.published
+        elif inherit_status:
+             # publish images with no parent
+            self.published = True
 
     def resolve_images(self, soup, wp_uploads, post_id_map):
         attachment_rel = re.compile(r"attachment wp-att-(\d+)")
@@ -279,6 +283,9 @@ content="""
         except Exception, e:
             logging.exception("%s:%s" % (type(data), data))
 
+def timestamp_now():
+    return time.mktime(datetime.now().timetuple())
+
 def git_commit_aliases(opts, items):
     rubbish = re.compile(r"^[a-z]+://[^/]+", re.I)
     def redirect(url, new_path):
@@ -289,10 +296,9 @@ def git_commit_aliases(opts, items):
                 [redirect(item.link, item.new_path) for item in items if item.link]
     redirects = "\n".join(redirects).encode("utf_8")
     commit = "Add example redirects for Apache"
-    timestamp = time.mktime(datetime.now().timetuple())
 
     print "commit refs/heads/%s" % opts.branch
-    print "committer %s <%s> %d +0000" % (opts.name, opts.email, timestamp)
+    print "committer %s <%s> %d +0000" % (opts.name, opts.email, timestamp_now())
     print "data %d" % len(commit)
     print commit
     print "M 644 inline initial-redirects.htaccess"
