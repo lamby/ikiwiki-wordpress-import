@@ -201,28 +201,42 @@ content="""
              # publish images with no parent
             self.published = True
 
+    attachment_cls = re.compile(r"wp-image-(\d+)")
+    filename_pat = re.compile(r".*/(.+?)(-\d+x\d+)?\.(jpg|jpeg|png)", re.I)
     def resolve_images(self, soup, wp_uploads, post_id_map):
-        attachment_rel = re.compile(r"attachment wp-att-(\d+)")
-
-        for imglink in soup.findAll("a", rel=attachment_rel):
-            attachment_id = int(attachment_rel.match(imglink["rel"]).group(1))
+        for img in soup.findAll("img", {"class": self.attachment_cls}):
+            attachment_id = int(self.attachment_cls.search(img["class"]).group(1))
             item = post_id_map.get(attachment_id, None)
             if item:
-                img = imglink.find("img")
-                if img:
-                    imgargs = ["\"%s\"" % item.attach_filename]
-                    if img.get("width") or img.get("height"):
-                        imgargs.append("size=\"%sx%s\"" % (img.get("width"), img.get("height")))
-                    if img.get("title"):
-                        imgargs.append("title=\"%s\"" % img["title"])
-                    if img.get("alt"):
-                        imgargs.append("alt=\"%s\"" % img["alt"])
-                    if img.get("class"):
-                        imgargs.append("class=\"%s\"" % img["class"])
-                    newtext = "[[!img  %s]]" % " ".join(imgargs)
-                    imglink.replaceWith(newtext)
+                self.img_directive(img, item)
 
         self.content = unicode(soup)
+
+    caption_pat = re.compile(r"\[caption.+?caption=\"([^\"]*)\"[^]]*?\]")
+    def img_directive(self, img, item):
+        imgargs = ["\"%s\"" % item.attach_filename]
+        if img.get("width") or img.get("height"):
+            imgargs.append("size=\"%sx%s\"" % (img.get("width"), img.get("height")))
+        if img.get("title"):
+            imgargs.append("title=\"%s\"" % img["title"])
+        if img.get("alt"):
+            imgargs.append("alt=\"%s\"" % img["alt"])
+        if img.get("class"):
+            imgargs.append("class=\"%s\"" % img["class"])
+
+        if img.parent.name == "a":
+            target = img.parent
+        else:
+            target = img
+            imgargs.append("link=\"no\"")
+
+        caption = self.caption_pat.search(target.previousSibling or "")
+        if caption:
+            imgargs.append("caption=\"%s\"" % caption.group(1))
+            target.previousSibling.replaceWith(self.caption_pat.sub("", target.previousSibling))
+            target.nextSibling.replaceWith(target.nextSibling.replace("[/caption]", ""))
+
+        target.replaceWith("[[!img  %s]]" % " ".join(imgargs))
 
     def git_commit(self, opts):
         x = self.x
