@@ -293,7 +293,8 @@ def git_commit_aliases(opts, items):
 
     redirects = ["# This can be a starting point for redirecting from your old URLs"] + \
                 [redirect(item.guid, item.new_path) for item in items if item.new_path] + \
-                [redirect(item.link, item.new_path) for item in items if item.link]
+                [redirect(urllib.quote(rubbish.sub("", item.link).encode("utf-8")), item.new_path)
+                 for item in items if item.link]
     redirects = "\n".join(redirects).encode("utf_8")
     commit = "Add example redirects for Apache"
 
