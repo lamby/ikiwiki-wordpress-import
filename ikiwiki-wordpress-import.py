@@ -118,6 +118,9 @@ class Item(object):
         content += "[[!meta  author=\"%s\"]]\n" % (x.find('dc:creator').string)
         content += self.content
 
+        if content[-1] != "\n":
+            content += "\n" # add newline to end of post text if missing
+
         for tag in self.get_tags():
             # remove 'tags/' because we have a 'tagbase' set.
             # your choice: 'tag', or 'taglink'
