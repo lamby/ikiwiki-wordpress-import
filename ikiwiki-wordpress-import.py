@@ -94,7 +94,7 @@ class Item(object):
         if self.published:
             self.timestamp = time.mktime(time.strptime(x.find('wp:post_date_gmt').string, "%Y-%m-%d %H:%M:%S"))
         else:
-            self.timestamp = None
+            self.timestamp = timestamp_now()
 
         self.content = x.find('content:encoded').string.replace('\r\n', '\n').replace('\r', '\n')
 
@@ -117,6 +117,9 @@ class Item(object):
         content += "[[!meta  date=\"%s\"]]\n" % datetime.fromtimestamp(self.timestamp)
         content += "[[!meta  author=\"%s\"]]\n" % (x.find('dc:creator').string)
         content += self.content
+
+        if content[-1] != "\n":
+            content += "\n" # add newline to end of post text if missing
 
         for tag in self.get_tags():
             # remove 'tags/' because we have a 'tagbase' set.
@@ -189,36 +192,54 @@ content="""
 
     def resolve_parent(self, post_id_map):
         parent = self.x.find("wp:post_parent").string or None
+        inherit_status = self.x.find('wp:status').string == "inherit"
         self.parent = post_id_map.get(int(parent), None)
 
         if self.parent:
             self.parent.children.append(self)
 
-            if self.x.find('wp:status').string == "inherit":
+            if inherit_status:
                 self.published = self.parent.published
+        elif inherit_status:
+             # publish images with no parent
+            self.published = True
 
+    attachment_cls = re.compile(r"wp-image-(\d+)")
+    filename_pat = re.compile(r".*/(.+?)(-\d+x\d+)?\.(jpg|jpeg|png)", re.I)
     def resolve_images(self, soup, wp_uploads, post_id_map):
-        attachment_rel = re.compile(r"attachment wp-att-(\d+)")
-
-        for imglink in soup.findAll("a", rel=attachment_rel):
-            attachment_id = int(attachment_rel.match(imglink["rel"]).group(1))
+        for img in soup.findAll("img", {"class": self.attachment_cls}):
+            attachment_id = int(self.attachment_cls.search(img["class"]).group(1))
             item = post_id_map.get(attachment_id, None)
             if item:
-                img = imglink.find("img")
-                if img:
-                    imgargs = ["\"%s\"" % item.attach_filename]
-                    if img.get("width") or img.get("height"):
-                        imgargs.append("size=\"%sx%s\"" % (img.get("width"), img.get("height")))
-                    if img.get("title"):
-                        imgargs.append("title=\"%s\"" % img["title"])
-                    if img.get("alt"):
-                        imgargs.append("alt=\"%s\"" % img["alt"])
-                    if img.get("class"):
-                        imgargs.append("class=\"%s\"" % img["class"])
-                    newtext = "[[!img  %s]]" % " ".join(imgargs)
-                    imglink.replaceWith(newtext)
+                self.img_directive(img, item)
 
         self.content = unicode(soup)
+
+    caption_pat = re.compile(r"\[caption.+?caption=\"([^\"]*)\"[^]]*?\]")
+    def img_directive(self, img, item):
+        imgargs = ["\"%s\"" % item.attach_filename]
+        if img.get("width") or img.get("height"):
+            imgargs.append("size=\"%sx%s\"" % (img.get("width"), img.get("height")))
+        if img.get("title"):
+            imgargs.append("title=\"%s\"" % img["title"])
+        if img.get("alt"):
+            imgargs.append("alt=\"%s\"" % img["alt"])
+        if img.get("class"):
+            imgargs.append("class=\"%s\"" % img["class"])
+
+        if img.parent.name == "a":
+            target = img.parent
+        else:
+            target = img
+            imgargs.append("link=\"no\"")
+
+        caption = self.caption_pat.search(target.previousSibling or "")
+        if caption:
+            imgargs.append("caption=\"%s\"" % caption.group(1))
+            target.previousSibling.replaceWith(self.caption_pat.sub("", target.previousSibling))
+            target.nextSibling.replaceWith(target.nextSibling.replace("[/caption]", ""))
+
+        target.replaceWith("[[!img  %s]]" % " ".join(imgargs))
 
     def git_commit(self, opts):
         x = self.x
@@ -279,6 +300,9 @@ content="""
         except Exception, e:
             logging.exception("%s:%s" % (type(data), data))
 
+def timestamp_now():
+    return time.mktime(datetime.now().timetuple())
+
 def git_commit_aliases(opts, items):
     rubbish = re.compile(r"^[a-z]+://[^/]+", re.I)
     def redirect(url, new_path):
@@ -286,13 +310,13 @@ def git_commit_aliases(opts, items):
 
     redirects = ["# This can be a starting point for redirecting from your old URLs"] + \
                 [redirect(item.guid, item.new_path) for item in items if item.new_path] + \
-                [redirect(item.link, item.new_path) for item in items if item.link]
+                [redirect(urllib.quote(rubbish.sub("", item.link).encode("utf-8")), item.new_path)
+                 for item in items if item.link]
     redirects = "\n".join(redirects).encode("utf_8")
     commit = "Add example redirects for Apache"
-    timestamp = time.mktime(datetime.now().timetuple())
 
     print "commit refs/heads/%s" % opts.branch
-    print "committer %s <%s> %d +0000" % (opts.name, opts.email, timestamp)
+    print "committer %s <%s> %d +0000" % (opts.name, opts.email, timestamp_now())
     print "data %d" % len(commit)
     print commit
     print "M 644 inline initial-redirects.htaccess"
